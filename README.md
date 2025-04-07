@@ -3,9 +3,6 @@
 
 A C library designed to simplify event-driven I/O programming by providing a clean abstraction layer over the `poll()` system call. It allows monitoring multiple file descriptors for various event types and dispatching specific user-defined callback functions when events occur.
 
-**Current Date:** Friday, April 4, 2025
-**Location Context:** Ellicott City, Maryland, United States
-
 ## Features
 
 * Monitors multiple file descriptors using `poll()`.
