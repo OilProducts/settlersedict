@@ -95,7 +95,10 @@ static int make_non_blocking(int fd) {
     return 0;
 }
 
-// Create listening socket
+/*
+ * Creates a listening socket on the specified port.
+ * Returns the file descriptor for the listening socket, or -1 on error.
+ */
 static int create_listener(uint16_t port) {
     int listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd < 0) {

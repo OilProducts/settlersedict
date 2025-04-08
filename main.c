@@ -15,11 +15,15 @@ static void handle_sigint(int sig) {
 
 // --- Main Function ---
 int main() {
+
+    // creates socket, sets SO_REUSEADDR, bind(), listen(), sets it to non-blocking
+    // Comes from socks5.c
     int listen_fd = create_listener(PROXY_PORT);
     if (listen_fd < 0) {
         return EXIT_FAILURE;
     }
 
+    // Sets up loop context (struct PollEventLoop)
     g_loop = poll_loop_create();
     if (!g_loop) {
         fprintf(stderr, "Failed to create event loop: %s\n", strerror(errno));
@@ -28,7 +32,7 @@ int main() {
     }
 
     // Register the listening socket
-    // Pass NULL user data for the listener itself, or maybe a special marker
+    // Pass NULL user data for the listener itself, it doesn't have any special context or state
     if (poll_loop_register_fd(g_loop, listen_fd, NULL) != 0) {
         fprintf(stderr, "Failed to register listening FD %d: %s\n", listen_fd, strerror(errno));
         poll_loop_destroy(g_loop);
@@ -37,6 +41,8 @@ int main() {
     }
 
     // Set the accept callback for the listening socket
+    // Accepts connections, creates connection state, and registers client FD with connection
+    // context as user_data, then sets callback for reads and callbacks for errors.
     if (poll_loop_set_callback(g_loop, listen_fd, EVENT_READ, accept_cb) != 0) {
         fprintf(stderr, "Failed to set accept callback for FD %d: %s\n", listen_fd, strerror(errno));
         poll_loop_destroy(g_loop);
@@ -51,7 +57,7 @@ int main() {
     sa.sa_flags = 0; // Or SA_RESTART? Depends on desired interaction with syscalls
     if (sigaction(SIGINT, &sa, NULL) == -1 || sigaction(SIGTERM, &sa, NULL) == -1) {
         perror("sigaction");
-        // Continue, but won't shut down gracefully on signal
+        // Continue if we cant set handler, but won't shut down gracefully on signal
     }
 
 

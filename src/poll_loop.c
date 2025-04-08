@@ -30,7 +30,8 @@ typedef struct {
 
 } FDEventInfo;
 
-// For deferred modifications
+// This struct holds the information necessary to make a modification to the pollfds struct.
+// This is necessary because we cannot modify the pollfds array while we are iterating through it.
 typedef struct PendingChange {
     enum { CHANGE_ADD, CHANGE_REMOVE, CHANGE_SET_CALLBACK } type;
     int fd;
@@ -308,7 +309,14 @@ PollEventLoop* poll_loop_create() {
         return NULL; // errno set by resize_arrays (realloc)
     }
 
-    // Create the self-pipe
+    // SELF PIPE
+    // pipe2 (preferable for atomicity of flags) or pipe + fcntl. Both ends are set non-blocking
+    // and close-on-exec. The read end of the pipe is registered with the loop itself using
+    // poll_loop_register_fd and poll_loop_set_callback. It has a simple internal callback
+    // (self_pipe_read_handler) that just reads the byte(s) to clear the pipe. poll_loop_stop writes
+    // a single byte to the write end of the pipe. This causes the poll() call in poll_loop_wait to
+    // wake up with a POLLIN event on the pipe's read end, allowing poll_loop_run to check the
+    // stop_requested flag.
     int pipe_fds[2];
     // Use pipe2 for O_CLOEXEC and O_NONBLOCK atomically if available
     #ifdef HAVE_PIPE2
@@ -684,6 +692,7 @@ int poll_loop_run(PollEventLoop* loop, int timeout_ms) {
     return result;
 }
 
+// This is necessary to stop the loop from outside. (signal handler or another thread)
 void poll_loop_stop(PollEventLoop* loop) {
     if (!loop) {
         return;
